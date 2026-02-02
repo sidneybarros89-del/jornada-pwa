@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+
+  <title>Jornada Inteligente</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2921/2921226.png">
+
+  <!-- React -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f3f4f6;
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function toMinutes(t) {
+      if (!t || t.length !== 5) return null;
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function toTime(mins) {
+      if (mins === null) return '--:--';
+      const sign = mins < 0 ? '-' : '';
+      mins = Math.abs(mins);
+      const h = String(Math.floor(mins / 60)).padStart(2, '0');
+      const m = String(mins % 60).padStart(2, '0');
+      return sign + h + ':' + m;
+    }
+
+    function Input({ label, value, onChange }) {
+      function handle(e) {
+        let v = e.target.value.replace(/\D/g, '');
+        if (v.length > 4) v = v.slice(0, 4);
+        if (v.length > 2) v = v.slice(0,2) + ':' + v.slice(2);
+        onChange(v);
+      }
+
+      return (
+        <div>
+          <label className="text-xs font-bold text-gray-500 uppercase">{label}</label>
+          <input
+            value={value}
+            onChange={handle}
+            placeholder="00:00"
+            inputMode="numeric"
+            className="w-full mt-1 p-3 text-xl text-center rounded-xl border focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+      );
+    }
+
+    function App() {
+      const [entrada, setEntrada] = useState(localStorage.getItem('entrada') || '');
+      const [saida, setSaida] = useState(localStorage.getItem('saida') || '');
+      const [inicio, setInicio] = useState(localStorage.getItem('inicio') || '');
+      const [retorno, setRetorno] = useState(localStorage.getItem('retorno') || '');
+      const [jornada, setJornada] = useState(localStorage.getItem('jornada') || '08:00');
+
+      useEffect(() => {
+        localStorage.setItem('entrada', entrada);
+        localStorage.setItem('saida', saida);
+        localStorage.setItem('inicio', inicio);
+        localStorage.setItem('retorno', retorno);
+        localStorage.setItem('jornada', jornada);
+      }, [entrada, saida, inicio, retorno, jornada]);
+
+      const e = toMinutes(entrada);
+      const s = toMinutes(saida);
+      const i = toMinutes(inicio);
+      const r = toMinutes(retorno);
+      const j = toMinutes(jornada) || 480;
+
+      let total = null;
+      if (e !== null && s !== null) {
+        total = s - e;
+        if (i !== null && r !== null) total -= (r - i);
+      }
+
+      const saldo = total !== null ? total - j : null;
+
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5 space-y-4">
+            <h1 className="text-xl font-bold text-center text-blue-600">
+              Jornada Inteligente
+            </h1>
+
+            <Input label="Entrada" value={entrada} onChange={setEntrada} />
+            <Input label="Início Intervalo" value={inicio} onChange={setInicio} />
+            <Input label="Retorno Intervalo" value={retorno} onChange={setRetorno} />
+            <Input label="Saída" value={saida} onChange={setSaida} />
+
+            <div className="bg-blue-600 text-white p-4 rounded-xl text-center">
+              <p className="text-xs uppercase opacity-80">Total Trabalhado</p>
+              <p className="text-3xl font-bold">{toTime(total)}</p>
+            </div>
+
+            <div className={`p-3 rounded-xl text-center font-bold ${
+              saldo >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+            }`}>
+              Saldo: {toTime(saldo)}
+            </div>
+
+            <button
+              onClick={() => {
+                setEntrada(''); setSaida(''); setInicio(''); setRetorno('');
+              }}
+              className="w-full text-xs text-gray-400 uppercase pt-3"
+            >
+              Limpar horários
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+
+  <!-- Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</body>
+</html>
